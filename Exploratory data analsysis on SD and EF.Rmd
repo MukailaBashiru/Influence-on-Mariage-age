@@ -1,0 +1,276 @@
+---
+title: "The Impacts of Sociodemographic Factors and Economic Development on Marriage: A Multivariate Regression Analysis"
+author: "Bashiru Mukaila"
+date: "2025-11-18"
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    number_sections: true
+    latex_engine: xelatex
+fig_caption: yes
+urlcolor: blue
+linkcolor: blue
+fontsize: 12pt
+header-includes:
+  - \usepackage{float}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, comment = NA, message = FALSE, warning = FALSE)
+```
+
+# Introduction {#sec:intro}
+
+Marriage is regarded to be an important social institution in many cultures across different countries in the world, and its rate has been a topic of interest for researchers for many decades. In recent years, there has been a growing interest in understanding the factors that influence marriage rates across different countries. This research aims to examine the relationship between marriage age, schooling year, GDP per capita growth, GDP per capita, and mental disorder. And the impact of these variables on marriage rates and marriage age.
+The motivation behind these variables is driven by the fact that economic conditions, education, and mental health are all factors that have been shown to affect people's decisions regarding marriage. Marriage age and School year are expected to have a negative relationship with marriage rates, as higher levels of education and older age at marriage have been associated with delayed marriage. Also GDP growth and GDP per capita are expected to have a positive relationship with marriage rates, as economic growth and higher income levels are often linked with increased marriage rates. Lastly, mental disorder is expected to have a negative relationship with marriage rates, as individuals with mental health issues may experience difficulties in forming and maintaining relationships.
+
+
+All data for this research are collected from the 'Our World in Data' website. The data been merged in each column is the average number of all raw data after the year 2000. Section \ref{sec:eda} consists of an exploratory data analysis of marriage data and explores the potential relationship between marriage rate and marriage age, education level, GDP per capita, speed of GDP growth, rate of mental disorders and the age structure.
+
+
+```{r loadpackages, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(moderndive)
+library(gapminder)
+library(skimr)
+library(mvtnorm)
+library(gridExtra)
+library(kableExtra)
+library(tidyr)
+library(readr)
+library(dplyr)
+library(maps)
+library(tidyverse)
+library(reshape2)
+```
+
+
+```{r label,echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE}
+# Importing required data
+
+marriage_rate_per_1000_inhabitants <- read_csv("Marriage_rate.csv")   # Importing marriage rate data
+
+age_at_marriage_women <- read_csv("age_at_marriage.csv")    # Importing women age at marriage data
+
+share_with_mental_and_substance_disorders <- read_csv("mental_and_substance_disorders.csv")  # Importing mental and substance disorder data
+
+mean_years_of_schooling_long_run <- read_csv("mean_years_of_schooling.csv")  # Importing mean year of school data
+
+median_age <- read_csv("median_age.csv")    # Importing median age data
+
+gdp_per_capita_growth <- read_csv("gdp_per_capita_growth.csv")    # Importing GDP per capita growth data
+
+gdp_per_capita_worldbank <- read_csv("gdp_per_capita.csv")   # Importing GDP per capita data
+
+```
+
+
+
+```{r}
+# Marriage rate Data cleaning and summary
+MarriageRate <- filter(.data = marriage_rate_per_1000_inhabitants, Year>=2000)   
+# Selecting Marriage rate data from year 2000
+names(MarriageRate) <- c("Entity","Code","Year","MarriageRate")   
+# Renaming the column header
+MarriageRate <- group_by(.data = MarriageRate, Entity)   # Grouping by entity/country
+MarriageRate <- summarise(.data = MarriageRate, MarriageRate = mean(MarriageRate))  
+# Mean of the data after year 2000.
+```
+
+```{r}
+# Women age at Marriage Data cleaning and summary
+FirstMarriageAge <- filter(.data = age_at_marriage_women, Year>=2000)  
+# Selecting Women age at Marriage data from year 2000
+names(FirstMarriageAge) <- c("Entity","Code","Year","FirstMarriageAge") 
+# Renaming the column header
+FirstMarriageAge <- group_by(.data = FirstMarriageAge, Entity)  
+# Grouping by entity/country
+FirstMarriageAge <- summarise(.data=FirstMarriageAge, FirstMarriageAge=mean(FirstMarriageAge))  # Mean of the data after year 2000.
+```
+
+```{r}
+FirstMarriageAge$Entity[FirstMarriageAge$Entity == 'Korea']<- "South Korea"
+# Renaming for proper identification
+rate_age <- right_join(MarriageRate, FirstMarriageAge, by = "Entity")  
+# Merge marriage rate and women first age at marriage tables
+rate_age <- drop_na(rate_age)  # Delete missing values
+```
+
+```{r}
+# Mental disorder Data cleaning and summary
+Mental_Disorders <- filter(.data = share_with_mental_and_substance_disorders, Year>=2000)  # Selecting mental disorder data from year 2000
+names(Mental_Disorders) <- c("Entity","Code","Year","Mental_Disorders")  
+# Renaming the column header
+Mental_Disorders <- group_by(.data = Mental_Disorders, Entity)  
+# Grouping by entity/country
+Mental_Disorders <- summarise(.data=Mental_Disorders, Mental_Disorders=mean(Mental_Disorders))  # Mean of the data after year 2000.
+```
+
+```{r}
+# Schooling year Data cleaning and summary
+Schoolingyear <- filter(.data = mean_years_of_schooling_long_run, Year>=2000)  # Selecting school year data from year 2000
+names(Schoolingyear) <- c("Entity","Code","Year","Schoolingyear")  
+# Renaming the column header
+Schoolingyear <- group_by(.data = Schoolingyear, Entity)  # Grouping by entity/country
+Schoolingyear <- summarise(.data=Schoolingyear, Schoolingyear=mean(Schoolingyear))  
+# Mean of the data after year 2000.
+```
+
+```{r}
+# GDP per capita Data cleaning and summary
+GDPpercapita <- filter(.data = gdp_per_capita_worldbank, Year>=2000)  
+# Selecting GDP per capita data from year 2000
+names(GDPpercapita) <- c("Entity","Code","Year","GDPpercapita")  
+# Renaming the column header
+GDPpercapita <- group_by(.data = GDPpercapita, Entity)  # Grouping by entity/country
+GDPpercapita <- summarise(.data=GDPpercapita, GDPpercapita=mean(GDPpercapita))  
+# Mean of the data after year 2000.
+```
+
+```{r}
+# GDP per capita growth Data cleaning and summary
+GDPgrowth <- filter(.data = gdp_per_capita_growth, Year>=2000)  
+# Selecting GDP per capita growth data from year 2000
+names(GDPgrowth) <- c("Entity","Code","Year","GDPgrowth")  # Renaming the column header
+GDPgrowth <- group_by(.data = GDPgrowth, Entity)  # Grouping by entity/country
+GDPgrowth <- summarise(.data=GDPgrowth, GDPgrowth=mean(GDPgrowth))  
+# Mean of the data after year 2000.
+```
+
+```{r}
+# Median age Data cleaning and summary
+Medianage <- filter(.data = median_age, Year>=2000&Year<=2021)
+names(Medianage) <- c("Entity","Code","Year","Medianage","delete")  
+# Renaming the column header
+Medianage<-Medianage[,-5]  # Further tidy up
+Medianage <- group_by(.data = Medianage, Entity)  # Grouping by entity/country
+Medianage <- summarise(.data=Medianage, Medianage=mean(Medianage))  
+# Mean of the data after 2000 years.
+```
+
+```{r}
+# Merge all tables
+DATA <- right_join(rate_age, Schoolingyear, by = "Entity")
+DATA <- right_join(DATA, Medianage, by = "Entity")
+DATA <- right_join(DATA, GDPpercapita, by = "Entity")
+DATA <- right_join(DATA, GDPgrowth, by = "Entity")
+DATA <- right_join(DATA, Mental_Disorders, by = "Entity")
+DATA <- drop_na(DATA)
+write.csv(DATA,file="Aggregated_Data.csv")
+```
+
+# Exploratory data analysis {#sec:eda}
+
+Figure \ref{fig:year} shows the marriage rate and marriage age in some selected countries. The average values of the data after year 2000 represent the situation of each country, supported by three reasons as follow: Firstly, the slope of the distribution curve was relatively stable. Secondly, the stability of using average values provided a reliable measure. and thirdly, missing data presented a challenge to drawing conclusions. Additionally, the use of average values after 2000 ensured the data was more recent and relevant, while minimizing the impact of data fluctuations. We can see that there is generally a decreasing trend in marriage rate overtime while there is an increasing trend in the first marriage age. This implies that on average people wait longer to venture into marriage in recent times.
+
+```{r, eval = TRUE, fig.width = 7, fig.align = "center", fig.cap = "\\label{fig:year} Change of marriage rate (left) and the marriage age (right) of some countries after 2000 .", fig.pos = "H"}
+age_all <- age_at_marriage_women
+age_all <- filter(age_all,Entity=="United States"|Entity=="United Kingdom"|Entity=="French"|Entity=="Korea"|Entity=="Japan"|Entity=="Chile"|Entity=="Sweden"|Entity=="Nigeria"|Entity=="Ghana",Year>=2000)
+names(age_all)<-c("Entity","Code","Year","Age")
+age_all<-age_all[,-2]
+
+p1 <- ggplot(data=age_all,aes(x=Year, y=Age, group=Entity,color=Entity))+
+      geom_line()
+
+rate_all <-marriage_rate_per_1000_inhabitants
+rate_all <- filter(rate_all,Entity=="United States"|Entity=="United Kingdom"|Entity=="Japan"|Entity=="Sweden"|Entity=="Nigeria",Year>=2000)
+names(rate_all)<-c("Entity","Code","Year","Rate")
+rate_all<-rate_all[,-2]
+p2 <- ggplot(data=rate_all,aes(x=Year, y=Rate, group=Entity,color=Entity))+
+      geom_line()
+
+grid.arrange(p2, p1, ncol = 2)
+```
+
+
+
+Table \ref{tab:marriage} below displays the first five rows of the data. The marriage rate is the number of marriages per 1,000 people in the population. The first marriage age refers to the average age of women at their first marriage. The median age divides the population into two parts of equal size. The schooling year is a common measure to show the  population's education level in a country. The unit of the GDP per capita in dollar, and the unit for the growth speed of GDP is percentage. The mental disorders refers to share of population with any mental health such as depression and anxiety.
+
+
+
+```{r, eval = TRUE}
+kable(head(DATA, n = 5), caption = '\\label{tab:marriage} The first 5 rows of the data',
+      booktabs = TRUE)%>%
+     kable_styling(font_size = 8, latex_options = c("scale_down", "hold_position"))
+```
+
+Table \ref{tab:summary} contains summarized statistical data on the marriage rate and marriage age of 105 countries all over the world. First, it is noticeable that the maximum marriage rate is nearly 7 times of the minimum marriage rate. Secondly, the middle 50% of the median age lies between 25.23 and 38.34, with an average age of 31.36. The 3rd quantile of the two GDP data are both around quadruple of the 1st quantile. And also, it is remarkable that the GDP per capita shows a huge range between each countries. The proportions of population suffering from mental health disorder ranging between 9.6 to 19.1.
+
+
+```{r table, eval = TRUE}
+summary(DATA[,2:8])%>%
+kable(caption = '\\label{tab:summary} The summary statistics of marriage rate, Marriage age, schooling year, median age, GDP per capita, GDP Growth and mental disoder')%>%
+kable_styling(font_size = 8, latex_options = c("scale_down", "hold_position"))
+```
+
+
+
+```{r, include = FALSE, out.width = '80%', fig.align = "center", fig.pos = "H"}
+# Drawing a world map for further programming
+world_map <- map_data("world")
+ggplot(world_map, aes(x = long, y = lat, group = group)) +
+  geom_polygon(fill="white", colour = "gray50") +
+  theme_classic()
+```
+
+```{r map, eval = TRUE, out.width = '80%', fig.align = "center", fig.pos = "H"}
+#Synchronising country names in dataframe and map
+DATA_maps<-DATA
+DATA_maps$Entity[DATA_maps$Entity == 'United States']<- "USA" 
+DATA_maps$Entity[DATA_maps$Entity == 'United Kingdom']<- "UK"
+world_map %>% 
+  left_join(DATA_maps, by = c("region" = "Entity")) -> DATA_world_map
+```
+
+
+Figure \ref{fig:map} illustrates the spread of average marriage rate and marriage age of the 105 countries in a map. As we can see in the plot on the left, darker blue means the country has a lower marriage rate and lighter blue means a higher first marriage rate. It is significant that, the countries in Asia have higher marriage rates and the countries in other continents like South America and North America have relative lower marriage rates. 
+
+The figure on the right hand side illustrates the spread of average marriage age. It is noticeable that the countries that have a relative higher marriage rate usually have lower marriage age.
+
+
+```{r ratemap, eval = TRUE, fig.height = 5, fig.align = "center", warning = FALSE, fig.cap = "\\label{fig:map} Marriage Rate(left) and Marriage Age(right) Distribution in World map.", fig.pos = "H"}
+##Drawing the world map with spread of marriage rate and marriage age
+mp_MarriageRate <- ggplot(DATA_world_map, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill= MarriageRate), colour = "white") +
+  #scale_fill_gradient(low = "lightblue", high="steel blue") +
+  labs(y="Latitude", x="Longitude") +
+  theme_light() +
+  theme(legend.position = c(0.18,0.15),
+        legend.key.size = unit(0.3, "cm"),
+        legend.key.width = unit(0.2, "cm"),
+        legend.key = element_rect(fill = "transparent", color = "transparent"),
+        legend.background = element_rect(fill = "transparent", color = "transparent"))
+
+mp_FirstMarriageAge <- ggplot(DATA_world_map, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill= FirstMarriageAge), colour = "white") +
+  #scale_fill_gradient(low = "lightblue", high="steel blue") +
+  labs(x="Longitude", y="Latitude") +
+  theme_light() +
+  theme(legend.position = c(0.18,0.15),
+        legend.key.size = unit(0.3, "cm"),
+        legend.key.width = unit(0.2, "cm"),
+        legend.key = element_rect(fill = "transparent", color = "transparent"),
+        legend.background = element_rect(fill = "transparent", color = "transparent"))
+
+grid.arrange(mp_MarriageRate, mp_FirstMarriageAge, ncol = 2)
+```
+
+Figure \ref{fig:corr} displays correlations (as scatterplots), distribution and also prints correlation coefficient between 2 response variables and 5 explanation variables.
+
+It is recognizable that each explanatory variable has a moderate or even strong correlation relation with first marriage age (as we can see from the significant coefficient in the 2nd line). Thus, we can construct a multiple linear regression model with these variables. AS for marriage age and other potential explanatory variables, GDP per capita has the most significant correlation coefficient. It is notable that marriage age has significant relationships with all other values, which means a single linear model is the most effective method to fit the model.
+GDP per capita is highly correlated with all other explanatory variables, then multicollinearity could be a problem when constructing multiple regression model. Hence, we may consider to remove GDP per capita when fitting the data with multivariate linear model.
+
+
+```{r cor, echo = FALSE, eval = TRUE, out.width = '80%', warning = FALSE, fig.pos = "h", fig.align = "center", fig.cap = "\\label{fig:corr} Scatterplot matrix and Correlation.", fig.pos = "H"}
+#correaltion of all variables
+library(PerformanceAnalytics)
+Data_no_name<-DATA
+row.names(Data_no_name)<-DATA$Entity
+Data_no_name <- Data_no_name[,-1]
+chart.Correlation(Data_no_name, histogram=TRUE, pch=19)
+```
+
+
+
+
